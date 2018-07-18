@@ -23,4 +23,4 @@ The rating increases when the plugin gets loaded. The rating increases by 1 poin
 I wrote this plugin for personal use and enjoy to use it :)
 If you have suggestions for this plugin, feel free to open an issue.  
 
-If you want to buy me a coffee, [feel free to do](paypal.me/dreistein101) so.
+If you want to buy me a coffee, [feel free to do](https://paypal.me/dreistein101) so.
