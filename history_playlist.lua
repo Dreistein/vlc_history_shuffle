@@ -15,7 +15,7 @@ data_file = ""
 function descriptor()
   return {
     title = "History Shuffle",
-    version = "1.0.0", 
+    version = "1.0.1", 
     shortdesc = "Shuffle Playlist", 
     description = "Shuffles playlists based on the liking of the songs",
     author = "Stefan Steininger", 
@@ -26,7 +26,16 @@ end
 function activate()
 	vlc.msg.info(prefix ..  "starting")
 
-	data_file = vlc.config.userdatadir() .. "/better_playlist_data.csv"
+	path_separator = ""
+	if string.find(vlc.config.userdatadir(), "\\") then
+		vlc.msg.info("windows machine")
+		path_separator = "\\"
+	else
+		vlc.msg.info("unix machine")
+		path_separator = "/"
+	end
+
+	data_file = vlc.config.userdatadir() .. path_separator .. "better_playlist_data.csv"
 	vlc.msg.info(prefix ..  "using data file " .. data_file)
     
     init_playlist()
