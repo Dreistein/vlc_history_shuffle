@@ -173,6 +173,18 @@ function randomize_playlist( )
 	vlc.playlist.play()
 end
 
+-- finds the last occurence of findString in mainString
+-- and returns the index
+-- otherwise nil if not found
+function find_last(mainString, findString)
+    local reversed = string.reverse(mainString)
+    local last = string.find(reversed, findString)
+    if last == nil then
+        return nil
+    end
+    return #mainString - last + 1
+end
+
 -- -- IO operations -- --
 
 -- Loads the data from
@@ -193,12 +205,12 @@ function load_data_file()
 		-- file successfully opened
 		for line in file:lines() do
 			-- csv layout is `path,like,timestamp`
-			local num_split = string.find(line, ",")
-			local path = string.sub(line, 1, num_split-1)
+			local num_split = find_last(line, ",")
+			local date = string.sub(line, 1, num_split-1)
 			
-			line = string.sub(line, num_split+1)
-			num_split = string.find(line, ",")
-			local like = tonumber(string.sub(line, 1, num_split-1))
+			line = string.sub(line, 0, num_split-1)
+			num_split = find_last(line, ",")
+			local path = tonumber(string.sub(line, 1, num_split-1))
 			local date = tonumber(string.sub(line, num_split+1))
 
 			if like == nil then
@@ -289,6 +301,8 @@ function playing_changed()
 	  	save_data_file()
 	end
 end
+
+function meta_changed() end
 
 -- -- Queue implementation -- --
 -- Idea from https://www.lua.org/pil/11.4.html
