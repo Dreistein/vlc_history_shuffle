@@ -1,16 +1,16 @@
 
-played = {} -- holds all music items form the current playlist
-store = {}	-- holds all music items from the database
+local played = {} -- holds all music items form the current playlist
+local store = {}	-- holds all music items from the database
  -- used in playing_changed
  -- the event gets triggered multiple times and we don't want to
  -- set the rating down multiple times
-last_played = ""
+local last_played = ""
 
 -- prefix to all logs
-prefix = "[HShuffle] "
+local prefix = "[HShuffle] "
 
 -- path to data file
-data_file = ""
+local data_file = ""
 
 function descriptor()
   return {
@@ -28,10 +28,10 @@ function activate()
 
 	path_separator = ""
 	if string.find(vlc.config.userdatadir(), "\\") then
-		vlc.msg.info("windows machine")
+		vlc.msg.info(prefix .. "windows machine")
 		path_separator = "\\"
 	else
-		vlc.msg.info("unix machine")
+		vlc.msg.info(prefix .. "unix machine")
 		path_separator = "/"
 	end
 
@@ -80,7 +80,7 @@ function init_playlist( )
 		-- increase the rating after some days
 		local elapsed_days = os.difftime(time, store[path].time) / 60 / 60 / 24
 		elapsed_days = math.floor(elapsed_days)
-		local new_like = store[path].like + elapsed_days
+		local new_like = store[path].like + elapsed_days * math.random(3)
 		if elapsed_days >= 1 then
 			if new_like > 200 then
 				new_like = 200
@@ -231,7 +231,7 @@ end
 function save_data_file()
 	local file,err = io.open(data_file, "w")
 	if err then
-		vlc.msg.err("[Playlist] unable to open data file.. exiting")
+		vlc.msg.err(prefix .. "Unable to open data file.. exiting")
 		vlc.deactivate()
 		return
 	else
