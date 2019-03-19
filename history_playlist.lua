@@ -1,6 +1,7 @@
 
 local played = {} -- holds all music items form the current playlist
 local store = {}	-- holds all music items from the database
+
  -- used in playing_changed
  -- the event gets triggered multiple times and we don't want to
  -- set the rating down multiple times
@@ -57,6 +58,10 @@ function init_playlist( )
 
 	-- load playlist items from file
 	load_data_file()
+	local count = 0
+	for _ in pairs(store) do count = count + 1 end
+	---store = vlc.config.get('store')
+	vlc.msg.info(prefix .. "store has size " .. count)
 
 	local time = os.time() -- current time for comparison of last played
 	local playlist = vlc.playlist.get("playlist",false).children
@@ -203,15 +208,17 @@ function load_data_file()
 		end
 	else
 		-- file successfully opened
+		vlc.msg.info(prefix .. "data file successfully opened")
+		local count = 0
 		for line in file:lines() do
 			-- csv layout is `path,like,timestamp`
 			local num_split = find_last(line, ",")
-			local date = string.sub(line, 1, num_split-1)
+			local date = tonumber(string.sub(line, 1, num_split-1))
 			
 			line = string.sub(line, 0, num_split-1)
 			num_split = find_last(line, ",")
-			local path = tonumber(string.sub(line, 1, num_split-1))
-			local date = tonumber(string.sub(line, num_split+1))
+			local path = string.sub(line, 1, num_split-1)
+			local like = tonumber(string.sub(line, num_split+1))
 
 			if like == nil then
 				like = 100
@@ -221,9 +228,11 @@ function load_data_file()
 				date = os.time()
 			end
 			if path then
+				count = count + 1
 				store[path] = {like=like, time=date}
 			end
 		end
+		vlc.msg.info(prefix .. "processed " .. count)
 	end
 	io.close(file)
 end
