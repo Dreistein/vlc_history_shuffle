@@ -58,10 +58,6 @@ function init_playlist( )
 
 	-- load playlist items from file
 	load_data_file()
-	local count = 0
-	for _ in pairs(store) do count = count + 1 end
-	---store = vlc.config.get('store')
-	vlc.msg.info(prefix .. "store has size " .. count)
 
 	local time = os.time() -- current time for comparison of last played
 	local playlist = vlc.playlist.get("playlist",false).children
@@ -213,7 +209,11 @@ function load_data_file()
 		for line in file:lines() do
 			-- csv layout is `path,like,timestamp`
 			local num_split = find_last(line, ",")
-			local date = tonumber(string.sub(line, 1, num_split-1))
+			local date = tonumber(string.sub(line, num_split+1))
+
+			if date == nil then
+				vlc.msg.warn(prefix .. "date nil: " .. line .. " => " .. string.sub(line, 1, num_split-1))
+			end
 			
 			line = string.sub(line, 0, num_split-1)
 			num_split = find_last(line, ",")
