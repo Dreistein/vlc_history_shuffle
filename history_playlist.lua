@@ -108,67 +108,49 @@ function randomize_playlist( )
 	vlc.msg.dbg(prefix ..  "randomizing playlist")
 	vlc.playlist.stop() -- stop the current song, takes some time
 
-	-- create a table with the index being the rating
-	local bins = {}
-	for i=0,200 do
-		bins[i] = Queue.new()
-	end
+	-- create a table with all songs and the liking being the probability over cumulative liking
+	local queue = {}
 
-	-- add song to appropriate bin
-	local num_items = 0
+	-- add songs to queue
+	local cum_sum = 0
 	for path,like in pairs(played) do
-		Queue.enqueue(bins[like], path)
-		num_items = num_items + 1
+		item = {}
+		item["path"] = path
+		item["probability"] = like
+		item["inserted"] = false
+		table.insert(queue, item)
+		cum_sum = cum_sum + like
 	end
 
-	-- shuffle non-empty bins
-	-- to randomize the items in the same bin
-	for i=0,200 do
-		if Queue.size(bins[i]) > 0 then
-			Queue.shuffle(bins[i])
-		end
-	end
+	-- sort in ascending order
+	table.sort(queue, function(a,b) return a['probability'] < b['probability'] end)
 
 	-- clear the playlist before adding items back
 	vlc.playlist.clear()
-	local mult = 1 -- factor to increase chance over time (to speed things up)
-	local inserted = 0 -- number of inserted songs
 
 	-- loop until all items are added to the playlist
-	while inserted < num_items do
-
-		-- go through all non-empty bins and start adding songs
-		-- the rating (bin index) is the threshold for which the
-		-- song gets added if its bigger than a random number [0,100]
-		-- if the threshold is not met, the next bin gets selected
-		for i=200,0,-1 do
-
-			local continue = Queue.size(bins[i]) > 0
-			local to_insert = {}
-			
-			while continue do
-				local r = math.random(100)
-				if (i+1)*mult >= r then -- check if random num meets threshold
-					local item = Queue.dequeue(bins[i])
-					item = {["path"] = item}
+	-- takes n^2 time -> could be improved
+	local to_insert = {}
+	while #queue ~= #to_insert do
+		-- get random number in the range
+		local p = math.random(0, cum_sum)
+		local probability = 0
+		-- iterate over items until cumulative probability is greater or equal than the random number
+		for k=1,#queue do
+			item = queue[k]
+			-- skip items that are already added
+			if not item.inserted then
+				probability = probability + item["probability"]
+				if p <= probability then
 					table.insert(to_insert, item)
-					inserted = inserted + 1
-				else
-					continue = false
-				end
-				if Queue.size(bins[i]) <= 0 then
-					continue = false
+					queue[k].inserted = true
+					cum_sum = cum_sum - item["probability"]
+					break
 				end
 			end
-			-- add all items to the playlist, that met the threshold
-			vlc.playlist.enqueue(to_insert)
 		end
-
-		-- we went through all bins,
-		-- increase the chance factor for the next round
-		mult = mult*1.2
-	
 	end
+	vlc.playlist.enqueue(to_insert)
 	
 	-- wait until the current song stops playing
 	-- to start the song at the beginning of the playlist
@@ -319,45 +301,3 @@ function playing_changed()
 end
 
 function meta_changed() end
-
--- -- Queue implementation -- --
--- Idea from https://www.lua.org/pil/11.4.html
-
-Queue = {}
-function Queue.new ()
-  return {first = 0, last = -1}
-end
-
-function Queue.enqueue (q, value)
-  local last = q.last + 1
-  q.last = last
-  q[last] = value
-end
-
-function Queue.dequeue (q)
-  local first = q.first
-  if first > q.last then error("queue is empty") end
-  local value = q[first]
-  q[first] = nil
-  q.first = first + 1
-  return value
-end
-
-function Queue.size(q)
-	return q.last - q.first + 1
-end
-
--- implements the fisher yates shuffle on the queue
--- based on the wikipedia page
-function Queue.shuffle(q)
-	local first = q.first
-	local last = q.last
-	if first > last then error("queue is empty") end
-	if first == last then return end
-	for i=first,last-1 do
-		local r = math.random(i,last-1)
-		local temporary = q[i]
-		q[i] = q[r]
-		q[r] = temporary
-	end
-end
