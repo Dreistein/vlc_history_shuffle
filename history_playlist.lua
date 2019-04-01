@@ -2,6 +2,9 @@
 local played = {} -- holds all music items form the current playlist
 local store = {}	-- holds all music items from the database
 
+-- constant for seconds in one day
+local day_in_seconds = 60*60*24
+
  -- used in playing_changed
  -- the event gets triggered multiple times and we don't want to
  -- set the rating down multiple times
@@ -79,15 +82,15 @@ function init_playlist( )
 		end
 
 		-- increase the rating after some days
-		local elapsed_days = os.difftime(time, store[path].time) / 60 / 60 / 24
+		local elapsed_days = os.difftime(time, store[path].time) / day_in_seconds
 		elapsed_days = math.floor(elapsed_days)
-		local new_like = store[path].like + elapsed_days * math.random(3)
+		local new_like = store[path].like + elapsed_days
 		if elapsed_days >= 1 then
 			if new_like > 200 then
 				new_like = 200
 			end
 			store[path].like = new_like
-			store[path].time = time
+			store[path].time = store[path].time + elapsed_days*day_in_seconds
 			changed = true
 		end
 	end
@@ -292,12 +295,16 @@ function playing_changed()
 			end
 			
 			-- subtract the remaining % of the playing song ±3
-			ratio = store[path].like - (100 - ratio - math.random(-3,3))
+			ratio = ratio + math.random(-3,3)
 			store[path].like = math.floor(ratio)
 		else
-			-- song ended normally, remove between 7 and 13 from the rating
+			-- song ended normally, set between 87 and 93
 			vlc.msg.info(prefix ..  "song ended normally")
-			store[path].like = store[path].like - 7 - math.random(0,6)
+			local previous_like = 100
+			if store[path].like < 100 then
+				previous_like = store[path].like
+			end
+			store[path].like = math.floor(previous_like - 7 - math.random(0,6))
 	  	end
 
 	  	-- check if we didn't remove too much
