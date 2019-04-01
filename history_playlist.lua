@@ -30,6 +30,10 @@ end
 function activate()
 	vlc.msg.info(prefix ..  "starting")
 
+	-- init the random generator
+	-- not crypto secure, but we have no crypto here :)
+	math.randomseed( os.time() )
+
 	path_separator = ""
 	if string.find(vlc.config.userdatadir(), "\\") then
 		vlc.msg.info(prefix .. "windows machine")
