@@ -226,6 +226,10 @@ function load_data_file()
 	io.close(file)
 end
 
+function clean_csv(text_string)
+	return '"' .. text_string:gsub('"', '""') .. '"'
+end
+
 function save_data_file()
 	local file,err = io.open(data_file, "w")
 	if err then
@@ -234,7 +238,7 @@ function save_data_file()
 		return
 	else
 		for path,item in pairs(store) do
-			file:write(path..",")
+			file:write(clean_csv(path)..",")
 			file:write(store[path].like..",")
 			file:write(store[path].time.."\n")
 		end
