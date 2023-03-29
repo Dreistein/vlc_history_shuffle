@@ -217,7 +217,6 @@ function load_data_file()
 				count = count + 1
 				store[path] = {like=like, time=date}
 			end
-			vlc.msg.info("Parsed in " .. path .. " " .. date .. " " .. like)
 		end
 		vlc.msg.info(prefix .. "processed " .. count)
 	end
@@ -226,7 +225,6 @@ end
 
 function clean_csv(text_string)
 	cleaned = '"' .. text_string:gsub('"', '""') .. '"'
-	vlc.msg.info("Cleaning" .. text_string .. " into " .. cleaned)
 	return cleaned
 end
 
