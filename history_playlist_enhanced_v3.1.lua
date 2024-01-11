@@ -41,8 +41,8 @@ function descriptor()
     version = "1.0.1", 
     shortdesc = "Shuffle Playlist", 
     description = "Shuffles playlists based on the liking of the songs",
-    OG vlc_history_shuffle author = "Stefan Steininger", 
-    author = "Randy C"
+    OG author = "Stefan Steininger", 
+    enhanced_fork author = "Randy C"
     capabilities = { "playing-listener"}
   }
 end
