@@ -37,7 +37,7 @@ end
 
 function descriptor()
   return {
-    title = "History Shuffle",
+    title = "VLC-History_Playlist_Shuffle_enhanced.lua",
     version = "1.0.1", 
     shortdesc = "Shuffle Playlist", 
     description = "Shuffles playlists based on the liking of the songs",

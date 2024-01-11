@@ -1,6 +1,6 @@
-## Changes in `history_playlist_enhanced_v3.1.lua`
+## Changes in `VLC-History_Playlist_Shuffle_enhanced.lua`
 
-The `history_playlist_enhanced_v3.1.lua` script has been updated to consolidate the features of `history_playlist_v2.lua` and `history_playlist_CSV.lua`. `history_playlist_enhanced_v3.1.lua` has been enhanced by integrating the play and skip count tracking feature from `history_playlist_v2.lua` and the `like` rating system from `history_playlist_CSV.lua`. 
+The `VLC-History_Playlist_Shuffle_enhanced.lua` script has been updated to consolidate the features of `history_playlist_v2.lua` and `history_playlist_CSV.lua`. `VLC-History_Playlist_Shuffle_enhanced.lua` has been enhanced by integrating the play and skip count tracking feature from `history_playlist_v2.lua` and the `like` rating system from `history_playlist_CSV.lua`. 
 
 1. **Data Structure**: The `store` table now holds `playcount`, `skipcount`, `like`, and `time` for each song. This combines the tracking of play and skip counts from `v2` with the `like` rating system from the `CSV` version.
 
