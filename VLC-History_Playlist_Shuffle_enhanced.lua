@@ -1,4 +1,3 @@
-
 local played = {} -- holds all music items form the current playlist
 local store = {}	-- holds all music items from the database
 
@@ -16,13 +15,34 @@ local prefix = "[HShuffle] "
 -- path to data file
 local data_file = ""
 
+-- Calculate like rating based on playcount and skipcount
+function calculate_like(playcount, skipcount)
+  local like = 100 + (playcount * 2) - (skipcount * 3)
+  like = math.max(0, math.min(like, 200)) -- Clamp value between 0 and 200
+  return like
+end
+
+-- Adjust like rating when a song is skipped
+function adjust_like_on_skip(like)
+  local adjustment = like * 0.9 -- Decrease like by 10%
+  return math.max(0, adjustment) -- Ensure like doesn't go below 0
+end
+
+-- Adjust like rating when a song is played fully
+function adjust_like_on_full_play(like)
+  local bonus = 5 -- Add a small bonus for a full play
+  local new_like = like + bonus
+  return math.min(new_like, 200) -- Ensure like doesn't exceed 200
+end
+
 function descriptor()
   return {
-    title = "History Shuffle",
+    title = "VLC-History_Playlist_Shuffle_enhanced.lua",
     version = "1.0.1", 
     shortdesc = "Shuffle Playlist", 
     description = "Shuffles playlists based on the liking of the songs",
-    author = "Stefan Steininger", 
+    OG author = "Stefan Steininger", 
+    enhanced_fork author = "Randy C"
     capabilities = { "playing-listener"}
   }
 end
@@ -78,22 +98,17 @@ function init_playlist( )
 		-- check if we have the song in the database
 		-- and copy the like else create a new entry
 		if store[path] then
-			played[path] = store[path].like
+			played[path] = calculate_like(store[path].playcount, store[path].skipcount)
 		else
 			played[path] = 100
-			store[path] = {like=100,time=time}
+			store[path] = {playcount=0, skipcount=0, time=time}
 			changed = true
 		end
 
 		-- increase the rating after some days
 		local elapsed_days = os.difftime(time, store[path].time) / day_in_seconds
 		elapsed_days = math.floor(elapsed_days)
-		local new_like = store[path].like + elapsed_days
 		if elapsed_days >= 1 then
-			if new_like > 200 then
-				new_like = 200
-			end
-			store[path].like = new_like
 			store[path].time = store[path].time + elapsed_days*day_in_seconds
 			changed = true
 		end
@@ -112,49 +127,24 @@ function randomize_playlist( )
 	vlc.msg.dbg(prefix ..  "randomizing playlist")
 	vlc.playlist.stop() -- stop the current song, takes some time
 
-	-- create a table with all songs and the liking being the probability over cumulative liking
+	-- create a table with all songs
 	local queue = {}
 
 	-- add songs to queue
-	local cum_sum = 0
-	for path,like in pairs(played) do
+	for path, weight in pairs(played) do
 		item = {}
 		item["path"] = path
-		item["probability"] = like
+		item["weight"] = weight
 		item["inserted"] = false
 		table.insert(queue, item)
-		cum_sum = cum_sum + like
 	end
 
 	-- sort in ascending order
-	table.sort(queue, function(a,b) return a['probability'] < b['probability'] end)
+	table.sort(queue, function(a,b) return a['weight'] > b['weight'] end)
 
 	-- clear the playlist before adding items back
 	vlc.playlist.clear()
-
-	-- loop until all items are added to the playlist
-	-- takes n^2 time -> could be improved
-	local to_insert = {}
-	while #queue ~= #to_insert do
-		-- get random number in the range
-		local p = math.random(0, cum_sum)
-		local probability = 0
-		-- iterate over items until cumulative probability is greater or equal than the random number
-		for k=1,#queue do
-			item = queue[k]
-			-- skip items that are already added
-			if not item.inserted then
-				probability = probability + item["probability"]
-				if p <= probability then
-					table.insert(to_insert, item)
-					queue[k].inserted = true
-					cum_sum = cum_sum - item["probability"]
-					break
-				end
-			end
-		end
-	end
-	vlc.playlist.enqueue(to_insert)
+	vlc.playlist.enqueue(queue)
 	
 	-- wait until the current song stops playing
 	-- to start the song at the beginning of the playlist
@@ -196,7 +186,7 @@ function load_data_file()
 		vlc.msg.info(prefix .. "data file successfully opened")
 		local count = 0
 		for line in file:lines() do
-			-- csv layout is `path,like,timestamp`
+			-- csv layout is `path,playcount,skipcount,timestamp`
 			local num_split = find_last(line, ",")
 			local date = tonumber(string.sub(line, num_split+1))
 
@@ -204,13 +194,20 @@ function load_data_file()
 				vlc.msg.warn(prefix .. "date nil: " .. line .. " => " .. string.sub(line, 1, num_split-1))
 			end
 			
+			-- remove date and last comma
 			line = string.sub(line, 0, num_split-1)
 			num_split = find_last(line, ",")
+			local skipcount = tonumber(string.sub(line, num_split+1))
+			line = string.sub(line, 0, num_split-1)
+			num_split = find_last(line, ",")
+			local playcount = tonumber(string.sub(line, num_split+1))
 			local path = string.sub(line, 1, num_split-1)
-			local like = tonumber(string.sub(line, num_split+1))
 
-			if like == nil then
-				like = 100
+			if playcount == nil then
+				playcount = 0
+			end
+			if skipcount == nil then
+				skipcount = 0
 			end
 
 			if date == nil then
@@ -218,7 +215,7 @@ function load_data_file()
 			end
 			if path then
 				count = count + 1
-				store[path] = {like=like, time=date}
+				store[path] = {playcount=playcount, skipcount=skipcount, time=date}
 			end
 		end
 		vlc.msg.info(prefix .. "processed " .. count)
@@ -235,7 +232,8 @@ function save_data_file()
 	else
 		for path,item in pairs(store) do
 			file:write(path..",")
-			file:write(store[path].like..",")
+			file:write(store[path].playcount..",")
+			file:write(store[path].skipcount..",")
 			file:write(store[path].time.."\n")
 		end
 	end
@@ -270,36 +268,18 @@ function playing_changed()
 	  	-- when the current time == total time, 
 	  	-- then the song ended normally
 	  	-- if there is remaining time, the song was skipped
-	  	if time < total then
-
-	  		-- % of the total time the song was playing
-	  		local ratio = time/total*100
-			vlc.msg.info(prefix ..  "skipped song at " .. ratio .. "%")
+	  	if time < total * 0.9 then
+			vlc.msg.info(prefix ..  "skipped song at " .. (math.floor(time/total*10000 + 0.5) / 100) .. "%")
 			
-			if ratio > 90 then
-				ratio = 90
-			end
-			
-			-- subtract the remaining % of the playing song ±3
-			ratio = ratio + math.random(-3,3)
-			store[path].like = math.floor(ratio)
+			store[path].skipcount = store[path].skipcount + 1
+			store[path].like = adjust_like_on_skip(store[path].like)
 		else
-			-- song ended normally, set between 87 and 93
-			vlc.msg.info(prefix ..  "song ended normally")
-			local previous_like = 100
-			if store[path].like < 100 then
-				previous_like = store[path].like
-			end
-			store[path].like = math.floor(previous_like - 7 - math.random(0,6))
-	  	end
-
-	  	-- check if we didn't remove too much
-	  	if store[path].like < 0 then
-	  		store[path].like = 0
+			store[path].playcount =  store[path].playcount + 1
+			store[path].like = adjust_like_on_full_play(store[path].like)
 	  	end
 	  	
 	  	-- save the song in the database with updated time
-	  	store[path].time = os.time()
+		store[path].time = os.time()
 	  	save_data_file()
 	end
 end
